@@ -1,0 +1,4 @@
+extends: [recommended]
+rules:
+  operation-4xx-response: off   # list/lookup endpoints have no meaningful 4xx
+  security-defined: off         # public read-only API, no auth

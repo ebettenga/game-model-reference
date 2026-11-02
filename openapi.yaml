@@ -1,0 +1,1481 @@
+openapi: 3.0.3
+info:
+  title: Game Data API
+  version: 1.0.0
+  description: |
+    A game-agnostic, read-only API for publishing the static data of an RPG/MMO:
+    classes, items, skills, creatures, NPCs, quests, zones, dungeons, crafting and more.
+
+    Conventions
+    - Every collection follows the same three-call pattern:
+      `GET /{collection}` returns all IDs, `GET /{collection}/{id}` returns one record,
+      `GET /{collection}/batch?ids=1,2,3` returns several.
+    - Values a game defines for itself (stats, elements, rarities, item categories,
+      currencies) are not hard-coded enums. They are lookup keys served from `/lookups/*`.
+    - Display text is a `LocalizedText` map of language code to string. Pass `?lang=en`
+      to receive only that language.
+    - Clients should cache everything and refetch only when `GET /version` changes.
+security: []  # public, read-only API
+servers:
+  - url: https://api.example.com/v1
+
+tags:
+  - name: meta
+  - name: lookups
+  - name: classes
+  - name: items
+  - name: item-sets
+  - name: skills
+  - name: creatures
+  - name: npcs
+  - name: quests
+  - name: zones
+  - name: dungeons
+  - name: achievements
+  - name: professions
+  - name: recipes
+  - name: progression
+  - name: assets
+
+paths:
+  # ---------- meta ----------
+  /version:
+    get:
+      tags: [meta]
+      operationId: getVersion
+      summary: Data and API versions
+      responses:
+        "200":
+          description: Current versions
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Version" }
+  /languages:
+    get:
+      tags: [meta]
+      operationId: listLanguages
+      summary: Languages available in LocalizedText fields
+      responses:
+        "200":
+          description: All languages
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Language" }
+
+  # ---------- lookups ----------
+  /lookups/stats:
+    get:
+      tags: [lookups]
+      operationId: listStats
+      summary: Stat definitions referenced by Modifier.stat and stat maps
+      responses:
+        "200":
+          description: All stats
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/StatDefinition" }
+  /lookups/elements:
+    get:
+      tags: [lookups]
+      operationId: listElements
+      summary: Elements / damage types and their matchups
+      responses:
+        "200":
+          description: All elements
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Element" }
+  /lookups/rarities:
+    get:
+      tags: [lookups]
+      operationId: listRarities
+      summary: Item rarity tiers
+      responses:
+        "200":
+          description: All rarities, ordered
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Rarity" }
+  /lookups/item-categories:
+    get:
+      tags: [lookups]
+      operationId: listItemCategories
+      summary: Item categories and subcategories
+      responses:
+        "200":
+          description: All item categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ItemCategory" }
+  /lookups/equipment-slots:
+    get:
+      tags: [lookups]
+      operationId: listEquipmentSlots
+      summary: Equipment slots
+      responses:
+        "200":
+          description: All equipment slots
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/LookupEntry" }
+  /lookups/currencies:
+    get:
+      tags: [lookups]
+      operationId: listCurrencies
+      summary: Currencies (gold, tokens, premium currency, ...)
+      responses:
+        "200":
+          description: All currencies
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Currency" }
+
+  # ---------- classes ----------
+  /classes:
+    get:
+      tags: [classes]
+      operationId: listClassIds
+      summary: All class IDs
+      responses: { "200": { $ref: "#/components/responses/IdList" } }
+  /classes/{id}:
+    get:
+      tags: [classes]
+      operationId: getClass
+      summary: Class by ID
+      parameters: [{ $ref: "#/components/parameters/Id" }, { $ref: "#/components/parameters/Lang" }]
+      responses:
+        "200":
+          description: The class
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CharacterClass" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /classes/batch:
+    get:
+      tags: [classes]
+      operationId: getClasses
+      summary: Classes by a list of IDs
+      parameters: [{ $ref: "#/components/parameters/Ids" }, { $ref: "#/components/parameters/Lang" }]
+      responses:
+        "200":
+          description: The classes found (unknown IDs are omitted)
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/CharacterClass" }
+
+  # ---------- items ----------
+  /items:
+    get:
+      tags: [items]
+      operationId: listItemIds
+      summary: All item IDs
+      responses: { "200": { $ref: "#/components/responses/IdList" } }
+  /items/{id}:
+    get:
+      tags: [items]
+      operationId: getItem
+      summary: Item by ID
+      parameters: [{ $ref: "#/components/parameters/Id" }, { $ref: "#/components/parameters/Lang" }]
+      responses:
+        "200":
+          description: The item
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Item" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /items/batch:
+    get:
+      tags: [items]
+      operationId: getItems
+      summary: Items by a list of IDs
+      parameters: [{ $ref: "#/components/parameters/Ids" }, { $ref: "#/components/parameters/Lang" }]
+      responses:
+        "200":
+          description: The items found
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Item" }
+
+  # ---------- item sets ----------
+  /item-sets:
+    get:
+      tags: [item-sets]
+      operationId: listItemSetIds
+      summary: All item set IDs
+      responses: { "200": { $ref: "#/components/responses/IdList" } }
+  /item-sets/{id}:
+    get:
+      tags: [item-sets]
+      operationId: getItemSet
+      summary: Item set by ID
+      parameters: [{ $ref: "#/components/parameters/Id" }, { $ref: "#/components/parameters/Lang" }]
+      responses:
+        "200":
+          description: The item set
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ItemSet" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /item-sets/batch:
+    get:
+      tags: [item-sets]
+      operationId: getItemSets
+      summary: Item sets by a list of IDs
+      parameters: [{ $ref: "#/components/parameters/Ids" }, { $ref: "#/components/parameters/Lang" }]
+      responses:
+        "200":
+          description: The item sets found
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ItemSet" }
+
+  # ---------- skills ----------
+  /skills:
+    get:
+      tags: [skills]
+      operationId: listSkillIds
+      summary: All skill IDs
+      responses: { "200": { $ref: "#/components/responses/IdList" } }
+  /skills/{id}:
+    get:
+      tags: [skills]
+      operationId: getSkill
+      summary: Skill by ID
+      parameters: [{ $ref: "#/components/parameters/Id" }, { $ref: "#/components/parameters/Lang" }]
+      responses:
+        "200":
+          description: The skill
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Skill" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /skills/batch:
+    get:
+      tags: [skills]
+      operationId: getSkills
+      summary: Skills by a list of IDs
+      parameters: [{ $ref: "#/components/parameters/Ids" }, { $ref: "#/components/parameters/Lang" }]
+      responses:
+        "200":
+          description: The skills found
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Skill" }
+
+  # ---------- creatures ----------
+  /creatures:
+    get:
+      tags: [creatures]
+      operationId: listCreatureIds
+      summary: All creature (monster) IDs
+      responses: { "200": { $ref: "#/components/responses/IdList" } }
+  /creatures/{id}:
+    get:
+      tags: [creatures]
+      operationId: getCreature
+      summary: Creature by ID
+      parameters: [{ $ref: "#/components/parameters/Id" }, { $ref: "#/components/parameters/Lang" }]
+      responses:
+        "200":
+          description: The creature
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Creature" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /creatures/batch:
+    get:
+      tags: [creatures]
+      operationId: getCreatures
+      summary: Creatures by a list of IDs
+      parameters: [{ $ref: "#/components/parameters/Ids" }, { $ref: "#/components/parameters/Lang" }]
+      responses:
+        "200":
+          description: The creatures found
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Creature" }
+
+  # ---------- npcs ----------
+  /npcs:
+    get:
+      tags: [npcs]
+      operationId: listNpcIds
+      summary: All NPC IDs
+      responses: { "200": { $ref: "#/components/responses/IdList" } }
+  /npcs/{id}:
+    get:
+      tags: [npcs]
+      operationId: getNpc
+      summary: NPC by ID
+      parameters: [{ $ref: "#/components/parameters/Id" }, { $ref: "#/components/parameters/Lang" }]
+      responses:
+        "200":
+          description: The NPC
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Npc" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /npcs/batch:
+    get:
+      tags: [npcs]
+      operationId: getNpcs
+      summary: NPCs by a list of IDs
+      parameters: [{ $ref: "#/components/parameters/Ids" }, { $ref: "#/components/parameters/Lang" }]
+      responses:
+        "200":
+          description: The NPCs found
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Npc" }
+
+  # ---------- quests ----------
+  /quests:
+    get:
+      tags: [quests]
+      operationId: listQuestIds
+      summary: All quest IDs
+      responses: { "200": { $ref: "#/components/responses/IdList" } }
+  /quests/{id}:
+    get:
+      tags: [quests]
+      operationId: getQuest
+      summary: Quest by ID
+      parameters: [{ $ref: "#/components/parameters/Id" }, { $ref: "#/components/parameters/Lang" }]
+      responses:
+        "200":
+          description: The quest
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Quest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /quests/batch:
+    get:
+      tags: [quests]
+      operationId: getQuests
+      summary: Quests by a list of IDs
+      parameters: [{ $ref: "#/components/parameters/Ids" }, { $ref: "#/components/parameters/Lang" }]
+      responses:
+        "200":
+          description: The quests found
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Quest" }
+
+  # ---------- zones ----------
+  /zones:
+    get:
+      tags: [zones]
+      operationId: listZoneIds
+      summary: All zone (map) IDs
+      responses: { "200": { $ref: "#/components/responses/IdList" } }
+  /zones/{id}:
+    get:
+      tags: [zones]
+      operationId: getZone
+      summary: Zone by ID
+      parameters: [{ $ref: "#/components/parameters/Id" }, { $ref: "#/components/parameters/Lang" }]
+      responses:
+        "200":
+          description: The zone
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Zone" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /zones/batch:
+    get:
+      tags: [zones]
+      operationId: getZones
+      summary: Zones by a list of IDs
+      parameters: [{ $ref: "#/components/parameters/Ids" }, { $ref: "#/components/parameters/Lang" }]
+      responses:
+        "200":
+          description: The zones found
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Zone" }
+  /zones/{id}/tiles/{zoom}/{x}/{y}:
+    get:
+      tags: [zones, assets]
+      operationId: getZoneTile
+      summary: Map tile image for a zone
+      parameters:
+        - { $ref: "#/components/parameters/Id" }
+        - { name: zoom, in: path, required: true, schema: { type: integer, minimum: 0 } }
+        - { name: x, in: path, required: true, schema: { type: integer, minimum: 0 } }
+        - { name: y, in: path, required: true, schema: { type: integer, minimum: 0 } }
+      responses:
+        "200": { $ref: "#/components/responses/Image" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  # ---------- dungeons ----------
+  /dungeons:
+    get:
+      tags: [dungeons]
+      operationId: listDungeonIds
+      summary: All dungeon / instance IDs
+      responses: { "200": { $ref: "#/components/responses/IdList" } }
+  /dungeons/{id}:
+    get:
+      tags: [dungeons]
+      operationId: getDungeon
+      summary: Dungeon by ID
+      parameters: [{ $ref: "#/components/parameters/Id" }, { $ref: "#/components/parameters/Lang" }]
+      responses:
+        "200":
+          description: The dungeon
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Dungeon" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /dungeons/batch:
+    get:
+      tags: [dungeons]
+      operationId: getDungeons
+      summary: Dungeons by a list of IDs
+      parameters: [{ $ref: "#/components/parameters/Ids" }, { $ref: "#/components/parameters/Lang" }]
+      responses:
+        "200":
+          description: The dungeons found
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Dungeon" }
+
+  # ---------- achievements ----------
+  /achievements:
+    get:
+      tags: [achievements]
+      operationId: listAchievementIds
+      summary: All achievement IDs
+      responses: { "200": { $ref: "#/components/responses/IdList" } }
+  /achievements/{id}:
+    get:
+      tags: [achievements]
+      operationId: getAchievement
+      summary: Achievement by ID
+      parameters: [{ $ref: "#/components/parameters/Id" }, { $ref: "#/components/parameters/Lang" }]
+      responses:
+        "200":
+          description: The achievement
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Achievement" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /achievements/batch:
+    get:
+      tags: [achievements]
+      operationId: getAchievements
+      summary: Achievements by a list of IDs
+      parameters: [{ $ref: "#/components/parameters/Ids" }, { $ref: "#/components/parameters/Lang" }]
+      responses:
+        "200":
+          description: The achievements found
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Achievement" }
+
+  # ---------- professions ----------
+  /professions:
+    get:
+      tags: [professions]
+      operationId: listProfessionIds
+      summary: All profession (gathering / crafting) IDs
+      responses: { "200": { $ref: "#/components/responses/IdList" } }
+  /professions/{id}:
+    get:
+      tags: [professions]
+      operationId: getProfession
+      summary: Profession by ID
+      parameters: [{ $ref: "#/components/parameters/Id" }, { $ref: "#/components/parameters/Lang" }]
+      responses:
+        "200":
+          description: The profession
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Profession" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /professions/batch:
+    get:
+      tags: [professions]
+      operationId: getProfessions
+      summary: Professions by a list of IDs
+      parameters: [{ $ref: "#/components/parameters/Ids" }, { $ref: "#/components/parameters/Lang" }]
+      responses:
+        "200":
+          description: The professions found
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Profession" }
+
+  # ---------- recipes ----------
+  /recipes:
+    get:
+      tags: [recipes]
+      operationId: listRecipeIds
+      summary: All crafting recipe IDs
+      responses: { "200": { $ref: "#/components/responses/IdList" } }
+  /recipes/{id}:
+    get:
+      tags: [recipes]
+      operationId: getRecipe
+      summary: Recipe by ID
+      parameters: [{ $ref: "#/components/parameters/Id" }, { $ref: "#/components/parameters/Lang" }]
+      responses:
+        "200":
+          description: The recipe
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Recipe" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /recipes/batch:
+    get:
+      tags: [recipes]
+      operationId: getRecipes
+      summary: Recipes by a list of IDs
+      parameters: [{ $ref: "#/components/parameters/Ids" }, { $ref: "#/components/parameters/Lang" }]
+      responses:
+        "200":
+          description: The recipes found
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Recipe" }
+
+  # ---------- progression ----------
+  /progression/levels:
+    get:
+      tags: [progression]
+      operationId: getLevelTable
+      summary: Character experience curve and per-level grants
+      responses:
+        "200":
+          description: One entry per level
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/LevelEntry" }
+  /progression/enhancement:
+    get:
+      tags: [progression]
+      operationId: getEnhancementTable
+      summary: Equipment enhancement (upgrade) levels, costs and bonuses
+      responses:
+        "200":
+          description: One entry per enhancement level
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/EnhancementLevel" }
+
+  # ---------- assets ----------
+  /assets/{kind}/{fileName}:
+    get:
+      tags: [assets]
+      operationId: getAsset
+      summary: Image asset referenced by an `icon` or `image` field
+      description: |
+        Records store a file name only; build the URL from the kind of record and the file name,
+        e.g. an item with `icon: "sword_01.png"` is served at `/assets/items/sword_01.png`.
+      parameters:
+        - name: kind
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [classes, items, skills, creatures, npcs, zones, dungeons, achievements, professions, elements, currencies, languages]
+        - name: fileName
+          in: path
+          required: true
+          schema: { type: string }
+        - name: size
+          in: query
+          description: Optional rendition, when the server offers several
+          schema: { type: string, enum: [small, medium, large, original], default: original }
+      responses:
+        "200": { $ref: "#/components/responses/Image" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+components:
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    Ids:
+      name: ids
+      in: query
+      required: true
+      description: Comma-separated IDs, e.g. `1,2,3`
+      style: form
+      explode: false
+      schema:
+        type: array
+        items: { type: integer, minimum: 1 }
+        maxItems: 500
+    Lang:
+      name: lang
+      in: query
+      required: false
+      description: Return only this language in LocalizedText fields (still as a map with one key)
+      schema: { type: string, example: en }
+
+  responses:
+    IdList:
+      description: All IDs in the collection
+      content:
+        application/json:
+          schema:
+            type: array
+            items: { type: integer }
+    NotFound:
+      description: No record with that ID
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Image:
+      description: Image file
+      content:
+        image/png:
+          schema: { type: string, format: binary }
+        image/webp:
+          schema: { type: string, format: binary }
+
+  schemas:
+    # ---------- shared building blocks ----------
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+        message: { type: string }
+
+    LocalizedText:
+      type: object
+      description: Language code to text
+      additionalProperties: { type: string }
+      example: { en: Iron Sword, fr: Épée en fer, de: Eisenschwert }
+
+    StatMap:
+      type: object
+      description: Stat key (see /lookups/stats) to value
+      additionalProperties: { type: number }
+      example: { strength: 15, maxHealth: 120, critChance: 0.05 }
+
+    EntityType:
+      type: string
+      enum: [class, item, item_set, skill, creature, npc, quest, zone, dungeon, achievement, profession, recipe, currency]
+
+    EntityRef:
+      type: object
+      description: A pointer to any record in this API
+      required: [type, id]
+      properties:
+        type: { $ref: "#/components/schemas/EntityType" }
+        id: { type: integer }
+
+    Modifier:
+      type: object
+      description: One stat change applied by gear, skills, set bonuses, buffs, etc.
+      required: [stat, operation, value]
+      properties:
+        stat: { type: string, description: Key from /lookups/stats }
+        operation:
+          type: string
+          enum: [add, multiply, set]
+          description: "`add` is flat, `multiply` is a factor (0.1 = +10%), `set` overrides the value"
+        value: { type: number }
+        maxValue:
+          type: number
+          nullable: true
+          description: When present, the actual value is rolled between `value` and `maxValue`
+        context:
+          type: string
+          enum: [any, pve, pvp]
+          default: any
+        durationSec: { type: number, nullable: true, description: Null means permanent while active }
+        tickIntervalSec: { type: number, nullable: true, description: For damage/heal over time }
+        grantsSkill:
+          type: object
+          nullable: true
+          properties:
+            skillId: { type: integer }
+            level: { type: integer }
+
+    Requirement:
+      type: object
+      description: A prerequisite to use, start or enter something
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [level, class, quest_completed, item, achievement, profession_level, skill, reputation, guild_level, party_size]
+        id: { type: integer, nullable: true, description: The class/quest/item/... ID when relevant }
+        value: { type: number, nullable: true, description: "Minimum level, quantity, etc." }
+
+    ItemQuantity:
+      type: object
+      required: [itemId, quantity]
+      properties:
+        itemId: { type: integer }
+        quantity: { type: integer, minimum: 1 }
+        chance: { type: number, minimum: 0, maximum: 1, nullable: true, description: Null means guaranteed }
+
+    CurrencyAmount:
+      type: object
+      required: [currency, amount]
+      properties:
+        currency: { type: string, description: Key from /lookups/currencies }
+        amount: { type: integer }
+
+    LootEntry:
+      type: object
+      required: [itemId, chance]
+      properties:
+        itemId: { type: integer }
+        minQuantity: { type: integer, default: 1 }
+        maxQuantity: { type: integer, default: 1 }
+        chance: { type: number, minimum: 0, maximum: 1 }
+        group:
+          type: string
+          nullable: true
+          description: Entries sharing a group are mutually exclusive (at most one drops)
+        requirements:
+          type: array
+          items: { $ref: "#/components/schemas/Requirement" }
+
+    Reward:
+      type: object
+      properties:
+        experience: { type: integer }
+        currencies:
+          type: array
+          items: { $ref: "#/components/schemas/CurrencyAmount" }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/ItemQuantity" }
+        choiceItems:
+          type: array
+          description: Pick exactly one of these
+          items: { $ref: "#/components/schemas/ItemQuantity" }
+        skillPoints: { type: integer }
+        unlocks:
+          type: array
+          description: Titles, mounts, recipes, zones, etc. unlocked on completion
+          items: { $ref: "#/components/schemas/EntityRef" }
+
+    Location:
+      type: object
+      required: [zoneId, x, y]
+      properties:
+        zoneId: { type: integer }
+        regionId: { type: integer, nullable: true }
+        x: { type: number }
+        y: { type: number }
+        z: { type: number, nullable: true, description: "Height, for 3D games" }
+
+    Area:
+      type: object
+      description: Axis-aligned rectangle within a zone
+      required: [zoneId, minX, minY, maxX, maxY]
+      properties:
+        zoneId: { type: integer }
+        regionId: { type: integer, nullable: true }
+        minX: { type: number }
+        minY: { type: number }
+        maxX: { type: number }
+        maxY: { type: number }
+
+    Spawn:
+      type: object
+      required: [area]
+      properties:
+        area: { $ref: "#/components/schemas/Area" }
+        count: { type: integer, nullable: true }
+        respawnSec: { type: number, nullable: true }
+        aggressive: { type: boolean, default: false }
+
+    Range:
+      type: object
+      required: [min, max]
+      properties:
+        min: { type: number }
+        max: { type: number }
+
+    # ---------- meta & lookups ----------
+    Version:
+      type: object
+      required: [dataVersion, apiVersion]
+      properties:
+        dataVersion: { type: string, description: Changes whenever any game data changes }
+        apiVersion: { type: string }
+        updatedAt: { type: string, format: date-time }
+
+    Language:
+      type: object
+      required: [code, name]
+      properties:
+        code: { type: string, example: en }
+        name: { type: string, example: English }
+        icon: { type: string, nullable: true }
+
+    LookupEntry:
+      type: object
+      required: [key, name]
+      properties:
+        key: { type: string }
+        name: { $ref: "#/components/schemas/LocalizedText" }
+        description: { $ref: "#/components/schemas/LocalizedText" }
+        icon: { type: string, nullable: true }
+
+    StatDefinition:
+      allOf:
+        - $ref: "#/components/schemas/LookupEntry"
+        - type: object
+          properties:
+            format: { type: string, enum: [flat, percent, seconds], default: flat }
+            group: { type: string, description: "e.g. primary, offense, defense, resistance, utility" }
+
+    Element:
+      allOf:
+        - $ref: "#/components/schemas/LookupEntry"
+        - type: object
+          properties:
+            strongAgainst: { type: array, items: { type: string } }
+            weakAgainst: { type: array, items: { type: string } }
+
+    Rarity:
+      allOf:
+        - $ref: "#/components/schemas/LookupEntry"
+        - type: object
+          required: [order]
+          properties:
+            order: { type: integer, description: Higher is rarer }
+            color: { type: string, example: "#a335ee" }
+
+    ItemCategory:
+      allOf:
+        - $ref: "#/components/schemas/LookupEntry"
+        - type: object
+          properties:
+            subcategories:
+              type: array
+              items: { $ref: "#/components/schemas/LookupEntry" }
+
+    Currency:
+      allOf:
+        - $ref: "#/components/schemas/LookupEntry"
+        - type: object
+          properties:
+            maxAmount: { type: integer, nullable: true }
+            premium: { type: boolean, default: false }
+
+    # ---------- classes ----------
+    CharacterClass:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: integer }
+        name: { $ref: "#/components/schemas/LocalizedText" }
+        description: { $ref: "#/components/schemas/LocalizedText" }
+        icon: { type: string }
+        parentId: { type: integer, nullable: true, description: The class this one advances from }
+        tier: { type: integer, description: "0 for starting classes, +1 per advancement" }
+        levelRange: { $ref: "#/components/schemas/Range" }
+        roles: { type: array, items: { type: string }, example: [tank, melee_dps] }
+        resources:
+          type: array
+          description: Resource pools this class uses
+          items: { type: string, example: mana }
+        allowedWeaponTypes: { type: array, items: { type: string } }
+        baseStats: { $ref: "#/components/schemas/StatMap" }
+        statsPerLevel: { $ref: "#/components/schemas/StatMap" }
+        skillTreeImage: { type: string, nullable: true }
+
+    # ---------- items ----------
+    Item:
+      type: object
+      required: [id, name, category]
+      properties:
+        id: { type: integer }
+        name: { $ref: "#/components/schemas/LocalizedText" }
+        description: { $ref: "#/components/schemas/LocalizedText" }
+        icon: { type: string }
+        category: { type: string, description: Key from /lookups/item-categories }
+        subcategory: { type: string, nullable: true }
+        rarity: { type: string, description: Key from /lookups/rarities }
+        level: { type: integer, description: Item level / required level }
+        requirements:
+          type: array
+          items: { $ref: "#/components/schemas/Requirement" }
+        stackSize: { type: integer, default: 1 }
+        buyPrice: { $ref: "#/components/schemas/CurrencyAmount" }
+        sellPrice: { $ref: "#/components/schemas/CurrencyAmount" }
+        binding: { type: string, enum: [none, on_pickup, on_equip, account], default: none }
+        flags:
+          type: object
+          properties:
+            tradable: { type: boolean }
+            sellable: { type: boolean }
+            deletable: { type: boolean }
+            consumable: { type: boolean }
+            premium: { type: boolean }
+            questItem: { type: boolean }
+        equipment:
+          type: object
+          nullable: true
+          description: Present for wearable items
+          properties:
+            slot: { type: string, description: Key from /lookups/equipment-slots }
+            weaponType: { type: string, nullable: true }
+            twoHanded: { type: boolean }
+            attack: { $ref: "#/components/schemas/Range" }
+            attackSpeed: { type: number, nullable: true }
+            attackRange: { type: number, nullable: true }
+            defense: { $ref: "#/components/schemas/Range" }
+            element: { type: string, nullable: true }
+            elementPower: { type: number, nullable: true }
+            setId: { type: integer, nullable: true }
+            maxEnhancementLevel: { type: integer, nullable: true }
+        modifiers:
+          type: array
+          description: Fixed bonuses
+          items: { $ref: "#/components/schemas/Modifier" }
+        randomModifierPool:
+          type: array
+          description: Bonuses that may be rolled on this item
+          items: { $ref: "#/components/schemas/Modifier" }
+        use:
+          type: object
+          nullable: true
+          description: Present for usable items (potions, scrolls, boxes, ...)
+          properties:
+            cooldownSec: { type: number }
+            castTimeSec: { type: number }
+            durationSec: { type: number, nullable: true }
+            cooldownGroup: { type: string, nullable: true }
+            triggersSkill:
+              type: object
+              nullable: true
+              properties:
+                skillId: { type: integer }
+                level: { type: integer }
+                chance: { type: number, minimum: 0, maximum: 1 }
+            teleportTo: { $ref: "#/components/schemas/Location" }
+        contents:
+          type: array
+          description: What a container/box gives when opened
+          items: { $ref: "#/components/schemas/ItemQuantity" }
+        salvage:
+          type: array
+          description: What dismantling yields
+          items: { $ref: "#/components/schemas/ItemQuantity" }
+        obtainedFrom:
+          type: array
+          description: Reverse links to creatures, quests, recipes, NPC shops, ...
+          items: { $ref: "#/components/schemas/EntityRef" }
+
+    ItemSet:
+      type: object
+      required: [id, name, itemIds]
+      properties:
+        id: { type: integer }
+        name: { $ref: "#/components/schemas/LocalizedText" }
+        itemIds: { type: array, items: { type: integer } }
+        bonuses:
+          type: array
+          items:
+            type: object
+            required: [piecesRequired, modifiers]
+            properties:
+              piecesRequired: { type: integer }
+              modifiers:
+                type: array
+                items: { $ref: "#/components/schemas/Modifier" }
+
+    # ---------- skills ----------
+    Skill:
+      type: object
+      required: [id, name, type]
+      properties:
+        id: { type: integer }
+        name: { $ref: "#/components/schemas/LocalizedText" }
+        description: { $ref: "#/components/schemas/LocalizedText" }
+        icon: { type: string }
+        classId: { type: integer, nullable: true, description: Null for skills not tied to a class }
+        requiredLevel: { type: integer }
+        type: { type: string, enum: [active, passive, toggle, aura, ultimate] }
+        target: { type: string, enum: [self, ally, enemy, party, area_ally, area_enemy, ground, none] }
+        damageType: { type: string, enum: [physical, magical, "true", healing, none] }
+        element: { type: string, nullable: true }
+        weaponType: { type: string, nullable: true, description: Weapon type required to use }
+        requirements:
+          type: array
+          items: { $ref: "#/components/schemas/Requirement" }
+        pointCost: { type: integer, description: Skill points per level }
+        maxLevel: { type: integer }
+        treePosition:
+          type: object
+          nullable: true
+          properties:
+            x: { type: integer }
+            y: { type: integer }
+        tags:
+          type: array
+          description: Free-form behaviour tags, e.g. combo_finisher, interruptible, usable_while_mounted
+          items: { type: string }
+        levels:
+          type: array
+          items: { $ref: "#/components/schemas/SkillLevel" }
+        related:
+          type: object
+          properties:
+            upgradesFrom: { type: integer, nullable: true }
+            upgradesTo: { type: array, items: { type: integer } }
+            variants: { type: array, items: { type: integer } }
+            triggers:
+              type: array
+              items:
+                type: object
+                properties:
+                  skillId: { type: integer }
+                  chance: { type: number }
+                  condition: { type: string, example: on_hit }
+
+    SkillLevel:
+      type: object
+      required: [level]
+      properties:
+        level: { type: integer }
+        cooldownSec: { type: number }
+        castTimeSec: { type: number }
+        durationSec: { type: number, nullable: true }
+        range: { type: number, nullable: true }
+        radius: { type: number, nullable: true }
+        costs:
+          type: array
+          items:
+            type: object
+            properties:
+              resource: { type: string, example: mana }
+              amount: { type: number }
+        damage:
+          type: object
+          nullable: true
+          properties:
+            base: { $ref: "#/components/schemas/Range" }
+            scaling:
+              type: array
+              items:
+                type: object
+                properties:
+                  stat: { type: string }
+                  factor: { type: number }
+        modifiers:
+          type: array
+          items: { $ref: "#/components/schemas/Modifier" }
+
+    # ---------- creatures ----------
+    Creature:
+      type: object
+      required: [id, name, level]
+      properties:
+        id: { type: integer }
+        name: { $ref: "#/components/schemas/LocalizedText" }
+        icon: { type: string }
+        level: { type: integer }
+        rank: { type: string, example: elite, description: "e.g. critter, normal, elite, miniboss, boss, world_boss" }
+        family: { type: string, nullable: true, example: undead }
+        element: { type: string, nullable: true }
+        flags:
+          type: object
+          properties:
+            aggressive: { type: boolean }
+            flying: { type: boolean }
+            eventOnly: { type: boolean }
+            levelHidden: { type: boolean }
+            fleesAtLowHealth: { type: boolean }
+        stats: { $ref: "#/components/schemas/StatMap" }
+        resistances:
+          type: object
+          description: Element key to damage multiplier (0.5 = takes half)
+          additionalProperties: { type: number }
+        attacks:
+          type: array
+          items:
+            type: object
+            properties:
+              skillId: { type: integer, nullable: true }
+              damage: { $ref: "#/components/schemas/Range" }
+              range: { type: number }
+              cooldownSec: { type: number }
+        behaviors:
+          type: array
+          description: Scripted reactions such as enrage, heal or summon
+          items:
+            type: object
+            required: [trigger]
+            properties:
+              trigger: { type: string, enum: [health_below, on_death, on_aggro, on_timer, on_ally_death] }
+              threshold: { type: number, nullable: true }
+              skillId: { type: integer, nullable: true }
+              summonCreatureIds: { type: array, items: { type: integer } }
+              modifiers:
+                type: array
+                items: { $ref: "#/components/schemas/Modifier" }
+        experience: { type: integer }
+        currencyDrop:
+          type: object
+          nullable: true
+          properties:
+            currency: { type: string }
+            range: { $ref: "#/components/schemas/Range" }
+        loot:
+          type: array
+          items: { $ref: "#/components/schemas/LootEntry" }
+        spawns:
+          type: array
+          items: { $ref: "#/components/schemas/Spawn" }
+
+    # ---------- npcs ----------
+    Npc:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: integer }
+        name: { $ref: "#/components/schemas/LocalizedText" }
+        title: { $ref: "#/components/schemas/LocalizedText" }
+        image: { type: string, nullable: true }
+        services:
+          type: array
+          description: What talking to this NPC offers
+          items: { type: string, example: shop }
+        locations:
+          type: array
+          items: { $ref: "#/components/schemas/Location" }
+        shops:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { $ref: "#/components/schemas/LocalizedText" }
+              entries:
+                type: array
+                items:
+                  type: object
+                  required: [itemId, price]
+                  properties:
+                    itemId: { type: integer }
+                    quantity: { type: integer, default: 1 }
+                    price:
+                      type: array
+                      description: Currency and/or item costs (barter)
+                      items:
+                        oneOf:
+                          - $ref: "#/components/schemas/CurrencyAmount"
+                          - $ref: "#/components/schemas/ItemQuantity"
+                    requirements:
+                      type: array
+                      items: { $ref: "#/components/schemas/Requirement" }
+        questIds: { type: array, items: { type: integer } }
+
+    # ---------- quests ----------
+    Quest:
+      type: object
+      required: [id, name, objectives]
+      properties:
+        id: { type: integer }
+        name: { $ref: "#/components/schemas/LocalizedText" }
+        description: { $ref: "#/components/schemas/LocalizedText" }
+        completionText: { $ref: "#/components/schemas/LocalizedText" }
+        type: { type: string, example: side, description: "e.g. main, side, class, daily, event" }
+        repeat: { type: string, enum: [none, daily, weekly, unlimited], default: none }
+        abandonable: { type: boolean, default: true }
+        shareable: { type: boolean, default: false }
+        chainParentId: { type: integer, nullable: true }
+        levelRange: { $ref: "#/components/schemas/Range" }
+        requirements:
+          type: array
+          items: { $ref: "#/components/schemas/Requirement" }
+        giverNpcId: { type: integer, nullable: true }
+        turnInNpcId: { type: integer, nullable: true }
+        timeLimitSec: { type: integer, nullable: true }
+        startItems:
+          type: array
+          description: Given when the quest is accepted
+          items: { $ref: "#/components/schemas/ItemQuantity" }
+        objectives:
+          type: array
+          items: { $ref: "#/components/schemas/QuestObjective" }
+        rewards: { $ref: "#/components/schemas/Reward" }
+        dialogue:
+          type: object
+          properties:
+            offer: { type: array, items: { $ref: "#/components/schemas/LocalizedText" } }
+            accept: { type: array, items: { $ref: "#/components/schemas/LocalizedText" } }
+            decline: { type: array, items: { $ref: "#/components/schemas/LocalizedText" } }
+            inProgress: { type: array, items: { $ref: "#/components/schemas/LocalizedText" } }
+            complete: { type: array, items: { $ref: "#/components/schemas/LocalizedText" } }
+            fail: { type: array, items: { $ref: "#/components/schemas/LocalizedText" } }
+
+    QuestObjective:
+      type: object
+      required: [type]
+      properties:
+        type: { type: string, enum: [kill, collect, deliver, talk, visit, use_item, craft, gather, reach_level, escort] }
+        target: { $ref: "#/components/schemas/EntityRef" }
+        quantity: { type: integer, default: 1 }
+        area: { $ref: "#/components/schemas/Area" }
+        consumesItems: { type: boolean, default: false, description: "For collect/deliver, whether items are taken on turn-in" }
+        description: { $ref: "#/components/schemas/LocalizedText" }
+
+    # ---------- zones ----------
+    Zone:
+      type: object
+      required: [id, name, type]
+      properties:
+        id: { type: integer }
+        name: { $ref: "#/components/schemas/LocalizedText" }
+        type: { type: string, example: overworld, description: "e.g. overworld, town, dungeon, instance, arena, housing" }
+        levelRange: { $ref: "#/components/schemas/Range" }
+        size:
+          type: object
+          properties:
+            width: { type: number }
+            height: { type: number }
+        tiles:
+          type: object
+          nullable: true
+          description: Map tiles served at /zones/{id}/tiles/{zoom}/{x}/{y}
+          properties:
+            tileSize: { type: integer }
+            maxZoom: { type: integer }
+        flags:
+          type: object
+          properties:
+            pvp: { type: boolean }
+            safe: { type: boolean }
+            flying: { type: boolean }
+            indoor: { type: boolean }
+            mounts: { type: boolean }
+        respawnAt: { $ref: "#/components/schemas/Location" }
+        regions:
+          type: array
+          items:
+            type: object
+            required: [id, name]
+            properties:
+              id: { type: integer }
+              name: { $ref: "#/components/schemas/LocalizedText" }
+              area: { $ref: "#/components/schemas/Area" }
+        pointsOfInterest:
+          type: array
+          items:
+            type: object
+            required: [type, location]
+            properties:
+              type: { type: string, example: waypoint, description: "e.g. waypoint, teleporter, bank, dungeon_entrance" }
+              name: { $ref: "#/components/schemas/LocalizedText" }
+              location: { $ref: "#/components/schemas/Location" }
+              ref: { $ref: "#/components/schemas/EntityRef" }
+
+    # ---------- dungeons ----------
+    Dungeon:
+      type: object
+      required: [id, name, zoneId]
+      properties:
+        id: { type: integer }
+        name: { $ref: "#/components/schemas/LocalizedText" }
+        image: { type: string, nullable: true }
+        zoneId: { type: integer }
+        type: { type: string, example: party, description: "e.g. solo, party, raid, guild" }
+        difficulty: { type: string, example: hard }
+        levelRange: { $ref: "#/components/schemas/Range" }
+        groupSize: { $ref: "#/components/schemas/Range" }
+        cooldownSec: { type: integer, nullable: true }
+        entryRequirements:
+          type: array
+          items: { $ref: "#/components/schemas/Requirement" }
+        entryCost:
+          type: array
+          items:
+            oneOf:
+              - $ref: "#/components/schemas/CurrencyAmount"
+              - $ref: "#/components/schemas/ItemQuantity"
+        creatureIds: { type: array, items: { type: integer } }
+        bossIds: { type: array, items: { type: integer } }
+        mutators:
+          type: array
+          description: Optional difficulty modifiers (curses, affixes)
+          items:
+            type: object
+            properties:
+              key: { type: string }
+              name: { $ref: "#/components/schemas/LocalizedText" }
+              description: { $ref: "#/components/schemas/LocalizedText" }
+              modifiers:
+                type: array
+                items: { $ref: "#/components/schemas/Modifier" }
+        rewards: { $ref: "#/components/schemas/Reward" }
+
+    # ---------- achievements ----------
+    Achievement:
+      type: object
+      required: [id, name, tiers]
+      properties:
+        id: { type: integer }
+        name: { $ref: "#/components/schemas/LocalizedText" }
+        description: { $ref: "#/components/schemas/LocalizedText" }
+        icon: { type: string }
+        category: { type: string }
+        trigger: { type: string, example: kill_creatures, description: What progresses the counter }
+        accountWide: { type: boolean, default: false }
+        tiers:
+          type: array
+          items:
+            type: object
+            required: [tier, goal]
+            properties:
+              tier: { type: integer }
+              goal: { type: number }
+              rewards: { $ref: "#/components/schemas/Reward" }
+              title: { $ref: "#/components/schemas/LocalizedText" }
+        related:
+          type: array
+          description: The creatures, items, skills, ... that count toward it
+          items: { $ref: "#/components/schemas/EntityRef" }
+
+    # ---------- professions & recipes ----------
+    Profession:
+      type: object
+      required: [id, name, type]
+      properties:
+        id: { type: integer }
+        name: { $ref: "#/components/schemas/LocalizedText" }
+        description: { $ref: "#/components/schemas/LocalizedText" }
+        icon: { type: string }
+        type: { type: string, enum: [gathering, crafting] }
+        maxLevel: { type: integer }
+        unlockRequirements:
+          type: array
+          items: { $ref: "#/components/schemas/Requirement" }
+        levels:
+          type: array
+          items:
+            type: object
+            properties:
+              level: { type: integer }
+              experienceRequired: { type: integer }
+        nodes:
+          type: array
+          description: Gathering nodes (ore veins, trees, fishing spots, ...)
+          items:
+            type: object
+            required: [id, name]
+            properties:
+              id: { type: integer }
+              name: { $ref: "#/components/schemas/LocalizedText" }
+              requiredLevel: { type: integer }
+              toolItemIds: { type: array, items: { type: integer } }
+              experience: { type: integer }
+              yields:
+                type: array
+                items: { $ref: "#/components/schemas/LootEntry" }
+              spawns:
+                type: array
+                items: { $ref: "#/components/schemas/Spawn" }
+
+    Recipe:
+      type: object
+      required: [id, name, ingredients, outputs]
+      properties:
+        id: { type: integer }
+        name: { $ref: "#/components/schemas/LocalizedText" }
+        professionId: { type: integer, nullable: true }
+        category: { type: string, nullable: true }
+        requiredProfessionLevel: { type: integer }
+        requirements:
+          type: array
+          items: { $ref: "#/components/schemas/Requirement" }
+        craftTimeSec: { type: number }
+        stationType: { type: string, nullable: true, example: forge }
+        ingredients:
+          type: array
+          items: { $ref: "#/components/schemas/ItemQuantity" }
+        currencyCost:
+          type: array
+          items: { $ref: "#/components/schemas/CurrencyAmount" }
+        outputs:
+          type: array
+          description: Use `chance` for random or quality-tiered results
+          items: { $ref: "#/components/schemas/ItemQuantity" }
+        experience: { type: integer }
+
+    # ---------- progression ----------
+    LevelEntry:
+      type: object
+      required: [level, experienceRequired]
+      properties:
+        level: { type: integer }
+        experienceRequired: { type: integer, description: Experience to reach the next level }
+        statPoints: { type: integer }
+        skillPoints: { type: integer }
+        deathPenalty: { type: number, nullable: true, description: Fraction of experience lost on death }
+
+    EnhancementLevel:
+      type: object
+      required: [level]
+      properties:
+        level: { type: integer }
+        successChance: { type: number, minimum: 0, maximum: 1 }
+        failureResult: { type: string, enum: [nothing, downgrade, reset, destroy] }
+        cost:
+          type: array
+          items:
+            oneOf:
+              - $ref: "#/components/schemas/CurrencyAmount"
+              - $ref: "#/components/schemas/ItemQuantity"
+        bonusesBySlot:
+          type: object
+          description: Equipment slot key to the bonuses gained at this level
+          additionalProperties:
+            type: array
+            items: { $ref: "#/components/schemas/Modifier" }
